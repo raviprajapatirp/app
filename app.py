@@ -525,7 +525,7 @@ def render_home():
     """, unsafe_allow_html=True)
 
     featured = [p for p in PRODUCTS if p.get("featured")][:8]
-    render_product_grid(featured, cols_n=4)
+    render_product_grid(featured, cols_n=4, prefix="home_featured")
 
     # Trending
     st.markdown('<div class="gc-divider"></div>', unsafe_allow_html=True)
@@ -537,7 +537,7 @@ def render_home():
     """, unsafe_allow_html=True)
 
     trending = sorted(PRODUCTS, key=lambda x: x["rating"], reverse=True)[:4]
-    render_product_grid(trending, cols_n=4)
+    render_product_grid(trending, cols_n=4, prefix="home_trending")
 
     # Trust
     st.markdown("""
@@ -580,7 +580,7 @@ def render_home():
 
 
 # ── PRODUCT CARD ──────────────────────────────────────────────────────────────
-def render_product_card(p):
+def render_product_card(p, prefix="default"):
     discount_pct = round((1 - p["price"] / p["mrp"]) * 100)
     badge = ""
     if p.get("new"):
@@ -610,16 +610,16 @@ def render_product_card(p):
 
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("View", key=f"view_{p['id']}"):
+        if st.button("View", key=f"{prefix}_view_{p['id']}"):
             go("product", p)
     with c2:
         wl_label = "♥ Saved" if in_wishlist else "♡ Save"
-        if st.button(wl_label, key=f"wl_{p['id']}"):
+        if st.button(wl_label, key=f"{prefix}_wl_{p['id']}"):
             toggle_wishlist(p["id"])
             st.rerun()
 
 
-def render_product_grid(products, cols_n=4):
+def render_product_grid(products, cols_n=4, prefix="default"):
     if not products:
         st.markdown("<p style='color:#555;padding:40px;text-align:center;'>No products found.</p>",
                     unsafe_allow_html=True)
@@ -631,7 +631,7 @@ def render_product_grid(products, cols_n=4):
         cols = st.columns(cols_n)
         for j, p in enumerate(row):
             with cols[j]:
-                render_product_card(p)
+                render_product_card(p, prefix=prefix)
     st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -695,7 +695,7 @@ def render_shop():
     st.markdown(f"<p style='color:#555;font-size:0.8rem;padding:12px 40px;background:#0a0a0a;'>"
                 f"{len(products)} products found</p>", unsafe_allow_html=True)
 
-    render_product_grid(products, cols_n=4)
+    render_product_grid(products, cols_n=4, prefix="shop")
 
 
 # ── PRODUCT DETAIL ────────────────────────────────────────────────────────────
@@ -795,7 +795,7 @@ def render_product_detail():
           <div class="gc-section-title">Similar Pieces</div>
         </div>
         """, unsafe_allow_html=True)
-        render_product_grid(related, cols_n=4)
+        render_product_grid(related, cols_n=4, prefix="related")
 
 
 # ── CART PAGE ─────────────────────────────────────────────────────────────────
@@ -1026,7 +1026,7 @@ def render_wishlist():
         return
 
     wish_products = [p for p in PRODUCTS if p["id"] in st.session_state.wishlist]
-    render_product_grid(wish_products, cols_n=4)
+    render_product_grid(wish_products, cols_n=4, prefix="wishlist")
 
 
 # ── ORDERS PAGE ───────────────────────────────────────────────────────────────
