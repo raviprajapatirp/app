@@ -582,39 +582,51 @@ def render_home():
 # ── PRODUCT CARD ──────────────────────────────────────────────────────────────
 def render_product_card(p, prefix="default"):
     discount_pct = round((1 - p["price"] / p["mrp"]) * 100)
-    badge = ""
-    if p.get("new"):
-        badge = '<span class="gc-badge-new">NEW</span><br>'
-    elif discount_pct >= 20:
-        badge = f'<span class="gc-badge-sale">{discount_pct}% OFF</span><br>'
-
-    stars = "★" * int(p["rating"]) + "☆" * (5 - int(p["rating"]))
     in_wishlist = p["id"] in st.session_state.wishlist
 
-    st.markdown(f"""
-    <div class="gc-card">
-      <div class="gc-card-img-placeholder">{p['emoji']}</div>
-      <div class="gc-card-body">
-        {badge}
-        <div class="gc-card-tag">{p['material']} · {p['category']}</div>
-        <div class="gc-card-name">{p['name']}</div>
-        <div class="gc-card-rating">{stars} ({p['reviews']})</div>
-        <div>
-          <span class="gc-card-mrp">₹{p['mrp']:,}</span>
-          <span class="gc-card-discount">{discount_pct}% off</span>
-        </div>
-        <div class="gc-card-price">₹{p['price']:,}</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Build badge string
+    if p.get("new"):
+        badge_html = '<span class="gc-badge-new">NEW</span><br>'
+    elif discount_pct >= 20:
+        badge_html = '<span class="gc-badge-sale">' + str(discount_pct) + '% OFF</span><br>'
+    else:
+        badge_html = ""
+
+    # Build stars
+    filled = int(p["rating"])
+    stars_html = ("★" * filled) + ("☆" * (5 - filled))
+
+    # Build price line
+    mrp_fmt = "{:,}".format(p["mrp"])
+    price_fmt = "{:,}".format(p["price"])
+
+    # Assemble card HTML using string concatenation (avoids f-string rendering bugs)
+    card_html = (
+        '<div class="gc-card">'
+        '<div class="gc-card-img-placeholder">' + p["emoji"] + "</div>"
+        '<div class="gc-card-body">'
+        + badge_html
+        + '<div class="gc-card-tag">' + p["material"] + " &middot; " + p["category"] + "</div>"
+        + '<div class="gc-card-name">' + p["name"] + "</div>"
+        + '<div class="gc-card-rating">' + stars_html + " (" + str(p["reviews"]) + ")</div>"
+        + "<div>"
+        + '<span class="gc-card-mrp">&#8377;' + mrp_fmt + "</span>"
+        + '<span class="gc-card-discount"> &nbsp;' + str(discount_pct) + "% off</span>"
+        + "</div>"
+        + '<div class="gc-card-price">&#8377;' + price_fmt + "</div>"
+        + "</div>"
+        + "</div>"
+    )
+
+    st.markdown(card_html, unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("View", key=f"{prefix}_view_{p['id']}"):
+        if st.button("View", key=prefix + "_view_" + p["id"]):
             go("product", p)
     with c2:
         wl_label = "♥ Saved" if in_wishlist else "♡ Save"
-        if st.button(wl_label, key=f"{prefix}_wl_{p['id']}"):
+        if st.button(wl_label, key=prefix + "_wl_" + p["id"]):
             toggle_wishlist(p["id"])
             st.rerun()
 
@@ -726,48 +738,45 @@ def render_product_detail():
         """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown(f"""
-        <div style="padding:10px 0;">
-          <div class="gc-card-tag" style="margin-bottom:12px;">{p['material']} · {p['category']}</div>
-          <div class="gc-detail-name">{p['name']}</div>
-          <div style="color:#d4af37;font-size:0.85rem;margin-bottom:16px;">{stars} &nbsp;{p['rating']}/5 ({p['reviews']} reviews)</div>
-          <div style="margin-bottom:20px;">
-            <span class="gc-card-mrp">₹{p['mrp']:,}</span>
-            <span class="gc-card-discount">&nbsp;{discount_pct}% off</span><br>
-            <span class="gc-detail-price">₹{p['price']:,}</span>
-          </div>
-          <p class="gc-detail-desc">{p['description']}</p>
-        </div>
-        """, unsafe_allow_html=True)
+        filled = int(p["rating"])
+        stars_html = ("★" * filled) + ("☆" * (5 - filled))
+        mrp_fmt = "{:,}".format(p["mrp"])
+        price_fmt = "{:,}".format(p["price"])
+
+        info_html = (
+            '<div style="padding:10px 0;">'
+            '<div class="gc-card-tag" style="margin-bottom:12px;">'
+            + p["material"] + " &middot; " + p["category"] + "</div>"
+            + '<div class="gc-detail-name">' + p["name"] + "</div>"
+            + '<div style="color:#d4af37;font-size:0.85rem;margin-bottom:16px;">'
+            + stars_html + " &nbsp;" + str(p["rating"]) + "/5 (" + str(p["reviews"]) + " reviews)</div>"
+            + '<div style="margin-bottom:20px;">'
+            + '<span class="gc-card-mrp">&#8377;' + mrp_fmt + "</span>"
+            + '<span class="gc-card-discount"> &nbsp;' + str(discount_pct) + "% off</span><br>"
+            + '<span class="gc-detail-price">&#8377;' + price_fmt + "</span>"
+            + "</div>"
+            + '<p class="gc-detail-desc">' + p["description"] + "</p>"
+            + "</div>"
+        )
+        st.markdown(info_html, unsafe_allow_html=True)
 
         # Specifications
-        st.markdown(f"""
-        <div style="margin:20px 0;">
-          <div style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:#f0e8d8;margin-bottom:12px;">
-            Specifications
-          </div>
-          <div class="gc-spec-row">
-            <span class="gc-spec-label">Material</span>
-            <span class="gc-spec-value">{p['material']}</span>
-          </div>
-          <div class="gc-spec-row">
-            <span class="gc-spec-label">Weight</span>
-            <span class="gc-spec-value">{p.get('weight','N/A')}</span>
-          </div>
-          <div class="gc-spec-row">
-            <span class="gc-spec-label">Purity</span>
-            <span class="gc-spec-value">{p.get('purity','N/A')}</span>
-          </div>
-          <div class="gc-spec-row">
-            <span class="gc-spec-label">Occasion</span>
-            <span class="gc-spec-value">{p.get('occasion','All occasions')}</span>
-          </div>
-          <div class="gc-spec-row">
-            <span class="gc-spec-label">Availability</span>
-            <span class="gc-spec-value" style="color:#4caf50;">✓ In Stock</span>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        spec_html = (
+            '<div style="margin:20px 0;">'
+            '<div style="font-family:\'Cormorant Garamond\',serif;font-size:1.2rem;color:#f0e8d8;margin-bottom:12px;">Specifications</div>'
+            '<div class="gc-spec-row"><span class="gc-spec-label">Material</span>'
+            + '<span class="gc-spec-value">' + p["material"] + "</span></div>"
+            + '<div class="gc-spec-row"><span class="gc-spec-label">Weight</span>'
+            + '<span class="gc-spec-value">' + p.get("weight", "N/A") + "</span></div>"
+            + '<div class="gc-spec-row"><span class="gc-spec-label">Purity</span>'
+            + '<span class="gc-spec-value">' + p.get("purity", "N/A") + "</span></div>"
+            + '<div class="gc-spec-row"><span class="gc-spec-label">Occasion</span>'
+            + '<span class="gc-spec-value">' + p.get("occasion", "All occasions") + "</span></div>"
+            + '<div class="gc-spec-row"><span class="gc-spec-label">Availability</span>'
+            + '<span class="gc-spec-value" style="color:#4caf50;">&#10003; In Stock</span></div>'
+            + "</div>"
+        )
+        st.markdown(spec_html, unsafe_allow_html=True)
 
         c1, c2 = st.columns(2)
         with c1:
@@ -827,16 +836,19 @@ def render_cart():
         for pid, item in list(st.session_state.cart.items()):
             p = item["product"]
             qty = item["qty"]
-            st.markdown(f"""
-            <div class="gc-cart-item">
-              <div class="gc-cart-emoji">{p['emoji']}</div>
-              <div style="flex:1;">
-                <div class="gc-cart-name">{p['name']}</div>
-                <div style="font-size:0.75rem;color:#666;margin-bottom:4px;">{p['material']}</div>
-                <div class="gc-cart-price">₹{p['price']:,} × {qty} = ₹{p['price']*qty:,}</div>
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
+            price_fmt = "{:,}".format(p["price"])
+            total_fmt = "{:,}".format(p["price"] * qty)
+            cart_item_html = (
+                '<div class="gc-cart-item">'
+                '<div class="gc-cart-emoji">' + p["emoji"] + "</div>"
+                '<div style="flex:1;">'
+                '<div class="gc-cart-name">' + p["name"] + "</div>"
+                '<div style="font-size:0.75rem;color:#666;margin-bottom:4px;">' + p["material"] + "</div>"
+                '<div class="gc-cart-price">&#8377;' + price_fmt + " &times; " + str(qty) + " = &#8377;" + total_fmt + "</div>"
+                "</div>"
+                "</div>"
+            )
+            st.markdown(cart_item_html, unsafe_allow_html=True)
 
             cq1, cq2, cq3 = st.columns([1, 1, 1])
             with cq1:
@@ -860,26 +872,29 @@ def render_cart():
         discount = st.session_state.discount
         total = subtotal + shipping - discount
 
-        st.markdown(f"""
-        <div class="gc-card" style="padding:24px;">
-          <div style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:#f0e8d8;margin-bottom:20px;">Order Summary</div>
-          <div class="gc-spec-row">
-            <span class="gc-spec-label">Subtotal</span>
-            <span class="gc-spec-value">₹{subtotal:,}</span>
-          </div>
-          <div class="gc-spec-row">
-            <span class="gc-spec-label">Shipping</span>
-            <span class="gc-spec-value" style="color:{'#4caf50' if shipping==0 else '#f0e8d8'}">
-              {'FREE' if shipping==0 else f'₹{shipping}'}
-            </span>
-          </div>
-          {"" if not discount else f'<div class="gc-spec-row"><span class="gc-spec-label">Discount</span><span class="gc-spec-value" style="color:#4caf50;">−₹{discount:,}</span></div>'}
-          <div class="gc-spec-row" style="border-bottom:none;padding-top:16px;margin-top:8px;border-top:1px solid #2a2a2a;">
-            <span style="color:#f0e8d8;font-weight:600;">Total</span>
-            <span style="color:#d4af37;font-size:1.3rem;font-weight:700;">₹{total:,}</span>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        ship_color = "#4caf50" if shipping == 0 else "#f0e8d8"
+        ship_val = "FREE" if shipping == 0 else "&#8377;" + str(shipping)
+        discount_row = ""
+        if discount:
+            discount_row = (
+                '<div class="gc-spec-row"><span class="gc-spec-label">Discount</span>'
+                '<span class="gc-spec-value" style="color:#4caf50;">&#8722;&#8377;'
+                + "{:,}".format(discount) + "</span></div>"
+            )
+        cart_summary_html = (
+            '<div class="gc-card" style="padding:24px;">'
+            '<div style="font-family:\'Cormorant Garamond\',serif;font-size:1.3rem;color:#f0e8d8;margin-bottom:20px;">Order Summary</div>'
+            '<div class="gc-spec-row"><span class="gc-spec-label">Subtotal</span>'
+            '<span class="gc-spec-value">&#8377;' + "{:,}".format(subtotal) + "</span></div>"
+            + '<div class="gc-spec-row"><span class="gc-spec-label">Shipping</span>'
+            + '<span class="gc-spec-value" style="color:' + ship_color + ';">' + ship_val + "</span></div>"
+            + discount_row
+            + '<div class="gc-spec-row" style="border-bottom:none;padding-top:16px;margin-top:8px;border-top:1px solid #2a2a2a;">'
+            + '<span style="color:#f0e8d8;font-weight:600;">Total</span>'
+            + '<span style="color:#d4af37;font-size:1.3rem;font-weight:700;">&#8377;' + "{:,}".format(total) + "</span></div>"
+            + "</div>"
+        )
+        st.markdown(cart_summary_html, unsafe_allow_html=True)
 
         # Coupon
         coupon = st.text_input("Coupon Code", placeholder="Enter code", key="coupon_input")
@@ -946,29 +961,34 @@ def render_checkout():
         shipping = 0 if subtotal >= 5000 else 199
         discount = st.session_state.discount
         total = subtotal + shipping - discount
+        item_count = get_cart_count(st.session_state.cart)
 
-        st.markdown(f"""
-        <div class="gc-card" style="padding:24px;margin-bottom:16px;">
-          <div style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:#f0e8d8;margin-bottom:16px;">Order Summary</div>
-          <div class="gc-spec-row">
-            <span class="gc-spec-label">Items ({get_cart_count(st.session_state.cart)})</span>
-            <span class="gc-spec-value">₹{subtotal:,}</span>
-          </div>
-          <div class="gc-spec-row">
-            <span class="gc-spec-label">Shipping</span>
-            <span class="gc-spec-value">{'FREE' if shipping==0 else f'₹{shipping}'}</span>
-          </div>
-          {"" if not discount else f'<div class="gc-spec-row"><span class="gc-spec-label">Coupon</span><span class="gc-spec-value" style="color:#4caf50;">−₹{discount:,}</span></div>'}
-          <div class="gc-spec-row" style="border-bottom:none;border-top:1px solid #2a2a2a;padding-top:16px;margin-top:8px;">
-            <span style="color:#f0e8d8;font-weight:600;font-size:1.1rem;">Total Payable</span>
-            <span style="color:#d4af37;font-size:1.5rem;font-weight:700;">₹{total:,}</span>
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        ship_val = "FREE" if shipping == 0 else "&#8377;" + str(shipping)
+        coupon_row = ""
+        if discount:
+            coupon_row = (
+                '<div class="gc-spec-row"><span class="gc-spec-label">Coupon</span>'
+                '<span class="gc-spec-value" style="color:#4caf50;">&#8722;&#8377;'
+                + "{:,}".format(discount) + "</span></div>"
+            )
+        checkout_summary_html = (
+            '<div class="gc-card" style="padding:24px;margin-bottom:16px;">'
+            '<div style="font-family:\'Cormorant Garamond\',serif;font-size:1.3rem;color:#f0e8d8;margin-bottom:16px;">Order Summary</div>'
+            '<div class="gc-spec-row"><span class="gc-spec-label">Items (' + str(item_count) + ')</span>'
+            '<span class="gc-spec-value">&#8377;' + "{:,}".format(subtotal) + "</span></div>"
+            + '<div class="gc-spec-row"><span class="gc-spec-label">Shipping</span>'
+            + '<span class="gc-spec-value">' + ship_val + "</span></div>"
+            + coupon_row
+            + '<div class="gc-spec-row" style="border-bottom:none;border-top:1px solid #2a2a2a;padding-top:16px;margin-top:8px;">'
+            + '<span style="color:#f0e8d8;font-weight:600;font-size:1.1rem;">Total Payable</span>'
+            + '<span style="color:#d4af37;font-size:1.5rem;font-weight:700;">&#8377;' + "{:,}".format(total) + "</span></div>"
+            + "</div>"
+        )
+        st.markdown(checkout_summary_html, unsafe_allow_html=True)
 
-        st.markdown("<div style='margin-bottom:12px;font-size:0.75rem;color:#555;'>🔒 Secured by 256-bit SSL encryption</div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom:12px;font-size:0.75rem;color:#555;'>&#128274; Secured by 256-bit SSL encryption</div>", unsafe_allow_html=True)
 
-        if st.button(f"Place Order · ₹{total:,}", key="place_order"):
+        if st.button("Place Order \u00b7 \u20b9" + "{:,}".format(total), key="place_order"):
             if not all([name, email, phone, address, city, pincode]) or state == "Select State":
                 st.error("Please fill all required fields.")
             else:
